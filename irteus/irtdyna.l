@@ -581,7 +581,7 @@
 	 ;; buffers for calculation
 	 (tmp-va (float-vector 0 0 0)))
    (if debug-view (format t ";; forward-all-kinematics link = ~A~%" (send self :name)))
-   (when parent-link
+   (when (and parent-link (not (eq (send parent-link :name) 'virtual-link)))
      (let* ((paxis (case (joint . axis)
 		     (:x #f(1 0 0)) (:y #f(0 1 0)) (:z #f(0 0 1))
 		     (:xx #f(1 0 0)) (:yy #f(0 1 0)) (:zz #f(0 0 1))
@@ -658,7 +658,7 @@
      (setq force (v+ force (send child :force) force)
 	   moment (v+ moment (send child :moment) moment)))
 
-   (when (and joint parent-link)
+   (when (and joint parent-link (not (eq (send parent-link :name) 'virtual-link)))
      (send joint :joint-torque
 	   (+ (v. (send self :get :spacial-velocity-jacobian) force)
 	      (v. (send self :get :angular-velocity-jacobian) moment))))
@@ -756,6 +756,7 @@
          (root-angular-acceleration (float-vector 0 0 0))
          (calc-torque-buffer-args (send self :calc-torque-buffer-args)))
    (let ((torque-vector (instantiate float-vector (length joint-list))))
+     (send-all (send self :links) :analysis-level :coords)
      (all-child-links
       (car (send self :links))
       #'(lambda (l)
@@ -789,6 +790,7 @@
           (send l :ext-moment (float-vector 0 0 0))))
      (dotimes (i (length torque-vector))
        (setf (elt torque-vector i) (send (elt joint-list i) :joint-torque)))
+     (send-all (send self :links) :analysis-level :body)
      torque-vector))
   (:calc-root-coords-vel-acc-from-pos
    (dt root-coords)
